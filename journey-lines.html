@@ -266,19 +266,42 @@
     ctx.fillRect(0,0,W,H);
 
     // neutral baseline
+    var leftMargin = 56;
     ctx.strokeStyle = "#cfe4e2";
     ctx.setLineDash([6,6]);
     ctx.beginPath();
-    ctx.moveTo(40, H/2);
+    ctx.moveTo(leftMargin, H/2);
     ctx.lineTo(W-10, H/2);
     ctx.stroke();
     ctx.setLineDash([]);
 
     ctx.fillStyle = "#5f7d80";
     ctx.font = "13px sans-serif";
-    ctx.fillText("High", 8, 18);
-    ctx.fillText("Low", 8, H-8);
+    ctx.fillText("High", leftMargin-24, 18);
+    ctx.fillText("Low", leftMargin-24, H-8);
     ctx.fillText("Time →", W-62, H-8);
+
+    // vertical Y-axis title, anchored near the top (mirrors "Time →" sitting near the right edge)
+    ctx.font = "bold 13px sans-serif";
+    var yAxisTitle = "Emotional Energy";
+    var yAxisTitleWidth = ctx.measureText(yAxisTitle).width;
+    var yAxisTop = 34;
+
+    ctx.save();
+    ctx.translate(16, yAxisTop + yAxisTitleWidth);
+    ctx.rotate(-Math.PI/2);
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#5f7d80";
+    ctx.fillText(yAxisTitle, 0, 0);
+    ctx.restore();
+
+    // up arrow drawn unrotated so it visually points up, sitting above the title
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.font = "bold 13px sans-serif";
+    ctx.fillStyle = "#5f7d80";
+    ctx.fillText("↑", 16, yAxisTop - 8);
+    ctx.restore();
 
     // drawn journey line or fallback connecting milestones
     var path = state.linePath;
