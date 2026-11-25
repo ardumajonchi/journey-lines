@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Journey Lines</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --ink:#2e2a22; --paper:#fbfaf7; --line:#6a8caf; --accent:#c0572b; --accent2:#d98f3c;
+    --muted:#8a8372; --border:#e1dcc9; --panelbg:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background:#f3f0e8; color:var(--ink); margin:0; padding:24px;
+  }
+  .wrap{max-width:1100px; margin:0 auto;}
+  header{display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; justify-content:space-between; margin-bottom:16px;}
+  h1{font-size:28px; margin:0 0 4px 0;}
+  .meta-fields{display:flex; gap:10px; flex-wrap:wrap;}
+  .meta-fields input{
+    border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:14px; background:#fff;
+  }
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap;}
+  button{
+    font-size:14px; padding:8px 14px; border-radius:6px; border:1px solid var(--border);
+    background:#fff; cursor:pointer; color:var(--ink);
+  }
+  button.primary{background:var(--accent); color:#fff; border-color:var(--accent);}
+  button.primary:hover{background:#a84a22;}
+  button:hover{background:#f1ede2;}
+  button.ghost{background:transparent;}
+  section.panel{
+    background:var(--panelbg); border:1px solid var(--border); border-radius:10px;
+    padding:18px; margin-bottom:18px;
+  }
+  .canvas-help{font-size:13px; color:var(--muted); margin:0 0 10px 0;}
+  #journeyCanvas{
+    width:100%; height:420px; display:block; border-radius:8px; cursor:crosshair;
+    border:1px solid var(--border); touch-action:none;
+  }
+  .lists{display:grid; grid-template-columns: repeat(3, 1fr); gap:16px;}
+  @media (max-width: 800px){ .lists{grid-template-columns:1fr;} }
+  .list-box h2{font-size:16px; margin:0 0 8px 0;}
+  .list-box ul{list-style:none; margin:0 0 8px 0; padding:0;}
+  .list-box li{display:flex; gap:6px; align-items:center; margin-bottom:6px;}
+  .list-box li input{
+    flex:1; border:1px solid var(--border); border-radius:6px; padding:6px 8px; font-size:13px;
+  }
+  .list-box li button{padding:4px 8px; font-size:13px;}
+  .list-box .add-btn{font-size:13px; padding:6px 10px;}
+  .milestone-summary{display:flex; flex-wrap:wrap; gap:10px; margin-top:14px;}
+  .ms-card{
+    border:1px solid var(--border); border-radius:8px; padding:8px 10px; width:150px; font-size:12px;
+    background:#fffefb; cursor:pointer;
+  }
+  .ms-card:hover{border-color:var(--accent);}
+  .ms-card img{width:100%; height:70px; object-fit:cover; border-radius:5px; margin-bottom:6px;}
+  .ms-card .t{font-weight:600; font-size:12.5px;}
+  .ms-card .d{color:var(--muted); font-size:11px;}
+
+  /* modal */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.45); display:none;
+    align-items:center; justify-content:center; padding:20px; z-index:50;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal{
+    background:#fff; border-radius:10px; padding:20px; width:100%; max-width:460px;
+    max-height:90vh; overflow:auto;
+  }
+  .modal h3{margin:0 0 12px 0;}
+  .modal label{display:block; font-size:13px; font-weight:600; margin:10px 0 4px;}
+  .modal input[type=text], .modal textarea{
+    width:100%; border:1px solid var(--border); border-radius:6px; padding:7px 9px; font-size:14px;
+    font-family:inherit;
+  }
+  .modal textarea{min-height:70px; resize:vertical;}
+  #imgPreview{max-width:100%; max-height:140px; display:none; margin-top:8px; border-radius:6px;}
+  .modal-actions{display:flex; justify-content:space-between; margin-top:16px; gap:8px;}
+  .modal-actions .right{display:flex; gap:8px;}
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:#2e2a22; color:#fff; padding:10px 18px; border-radius:20px; font-size:13px;
+    opacity:0; transition:opacity .3s; pointer-events:none; z-index:100;
+  }
+  .toast.show{opacity:1;}
+  footer{text-align:center; color:var(--muted); font-size:12px; margin-top:20px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>🧭 Journey Lines</h1>
+      <div class="meta-fields">
+        <input id="metaTitle" type="text" placeholder="Journey title (e.g. My Career Journey)">
+        <input id="metaParticipant" type="text" placeholder="Your name">
+        <input id="metaDate" type="text" placeholder="Date / Team / Retro session">
+      </div>
+    </div>
+    <div class="toolbar">
+      <button id="btnAddMilestone">+ Add Milestone</button>
+      <button id="btnClearLine" class="ghost">Clear Drawing</button>
+      <button id="btnNew" class="ghost">New Journey</button>
+      <button id="btnSave">Save</button>
+      <button id="btnExport" class="primary">Export Read-Only HTML</button>
+    </div>
+  </header>
+
+  <section class="panel">
+    <p class="canvas-help">
+      <strong>Draw your journey line:</strong> click-and-drag across the canvas to sketch the ups and downs of your journey over time.
+      <strong>Add a milestone:</strong> click once on an empty spot (or use "Add Milestone") to drop a pin, then fill in details.
+      <strong>Edit a milestone:</strong> click an existing pin. <strong>Move it:</strong> drag a pin.
+    </p>
+    <canvas id="journeyCanvas" width="1100" height="420"></canvas>
+    <div class="milestone-summary" id="msSummary"></div>
+  </section>
+
+  <section class="panel lists">
+    <div class="list-box">
+      <h2>Learnings</h2>
+      <ul id="listLearnings"></ul>
+      <button class="add-btn" data-list="learnings">+ Add learning</button>
+    </div>
+    <div class="list-box">
+      <h2>Triggers</h2>
+      <ul id="listTriggers"></ul>
+      <button class="add-btn" data-list="triggers">+ Add trigger</button>
+    </div>
+    <div class="list-box">
+      <h2>Leadership Philosophy</h2>
+      <ul id="listPhilosophy"></ul>
+      <button class="add-btn" data-list="philosophy">+ Add item</button>
+    </div>
+  </section>
+
+  <footer>Journey Lines — runs entirely in your browser, nothing leaves this page.</footer>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3>Milestone</h3>
+    <label>Title</label>
+    <input type="text" id="mTitle" placeholder="e.g. Joined the team">
+    <label>Date / Period</label>
+    <input type="text" id="mDate" placeholder="e.g. March 2021">
+    <label>Description</label>
+    <textarea id="mDesc" placeholder="What happened? Why does it matter?"></textarea>
+    <label>Picture</label>
+    <input type="file" id="mImage" accept="image/*">
+    <img id="imgPreview">
+    <button id="btnRemoveImage" class="ghost" style="margin-top:6px; display:none;">Remove picture</button>
+    <div class="modal-actions">
+      <button id="btnDeleteMilestone" class="ghost">Delete</button>
+      <div class="right">
+        <button id="btnCancelMilestone" class="ghost">Cancel</button>
+        <button id="btnSaveMilestone" class="primary">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "journeyLinesApp_v1";
+
+  var state = {
+    meta: { title: "", participant: "", date: "" },
+    linePath: [],
+    milestones: [],
+    learnings: [""],
+    triggers: [""],
+    philosophy: [""]
+  };
+
+  function load(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        var parsed = JSON.parse(raw);
+        if(parsed && typeof parsed === "object") state = parsed;
+      }
+    }catch(e){ console.warn("Could not load saved journey:", e); }
+    if(!state.learnings || !state.learnings.length) state.learnings = [""];
+    if(!state.triggers || !state.triggers.length) state.triggers = [""];
+    if(!state.philosophy || !state.philosophy.length) state.philosophy = [""];
+  }
+
+  function persist(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch(e){ console.warn("Could not persist journey:", e); }
+  }
+
+  function toast(msg){
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toast._h);
+    toast._h = setTimeout(function(){ t.classList.remove("show"); }, 1800);
+  }
+
+  function escapeHtml(s){
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
+  }
+
+  // ---- Canvas setup ----
+  var canvas = document.getElementById("journeyCanvas");
+  var ctx = canvas.getContext("2d");
+
+  var dragging = false, dragTarget = null, dragMoved = false, dragStart = null;
+  var drawingLine = false, currentPath = [];
+
+  function getPos(evt){
+    var rect = canvas.getBoundingClientRect();
+    var clientX, clientY;
+    if(evt.touches && evt.touches.length){
+      clientX = evt.touches[0].clientX; clientY = evt.touches[0].clientY;
+    } else {
+      clientX = evt.clientX; clientY = evt.clientY;
+    }
+    var x = (clientX - rect.left) / rect.width;
+    var y = (clientY - rect.top) / rect.height;
+    return { x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)) };
+  }
+
+  function hitTest(pos){
+    var W = canvas.width, H = canvas.height;
+    var best = null, bestDist = Infinity;
+    state.milestones.forEach(function(m){
+      var dx = m.x * W - pos.x * W, dy = m.y * H - pos.y * H;
+      var d = Math.hypot(dx, dy);
+      if(d < 16 && d < bestDist){ best = m; bestDist = d; }
+    });
+    return best;
+  }
+
+  function pathSpan(path){
+    if(path.length < 2) return 0;
+    var minX=1,maxX=0,minY=1,maxY=0;
+    path.forEach(function(p){
+      minX=Math.min(minX,p.x); maxX=Math.max(maxX,p.x);
+      minY=Math.min(minY,p.y); maxY=Math.max(maxY,p.y);
+    });
+    return Math.hypot(maxX-minX, maxY-minY);
+  }
+
+  function draw(){
+    var W = canvas.width, H = canvas.height;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = "#fbfaf7";
+    ctx.fillRect(0,0,W,H);
+
+    // neutral baseline
+    ctx.strokeStyle = "#d8d3c5";
+    ctx.setLineDash([6,6]);
+    ctx.beginPath();
+    ctx.moveTo(40, H/2);
+    ctx.lineTo(W-10, H/2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = "#8a8372";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("High", 8, 18);
+    ctx.fillText("Low", 8, H-8);
+    ctx.fillText("Time →", W-62, H-8);
+
+    // drawn journey line or fallback connecting milestones
+    var path = state.linePath;
+    if(path && path.length > 1){
+      ctx.strokeStyle = "#6a8caf";
+      ctx.lineWidth = 3;
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.beginPath();
+      path.forEach(function(p,i){
+        var x=p.x*W, y=p.y*H;
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      });
+      ctx.stroke();
+    } else if(state.milestones.length > 1){
+      var pts = state.milestones.slice().sort(function(a,b){return a.x-b.x;});
+      ctx.strokeStyle = "#6a8caf";
+      ctx.lineWidth = 3;
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.beginPath();
+      pts.forEach(function(p,i){
+        var x=p.x*W, y=p.y*H;
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      });
+      ctx.stroke();
+    }
+
+    // live stroke being drawn
+    if(drawingLine && currentPath.length > 1){
+      ctx.strokeStyle = "#c0572b";
+      ctx.lineWidth = 3;
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.beginPath();
+      currentPath.forEach(function(p,i){
+        var x=p.x*W, y=p.y*H;
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      });
+      ctx.stroke();
+    }
+
+    // milestone markers
+    state.milestones.forEach(function(m, idx){
+      var x = m.x*W, y = m.y*H;
+      ctx.beginPath();
+      ctx.arc(x,y,9,0,Math.PI*2);
+      ctx.fillStyle = (m === dragTarget) ? "#d98f3c" : "#c0572b";
+      ctx.fill();
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke();
+
+      ctx.fillStyle = "#2e2a22";
+      ctx.font = "bold 12px sans-serif";
+      var label = m.title || ("Milestone " + (idx+1));
+      var ly = (y - 14 > 14) ? y - 14 : y + 22;
+      ctx.fillText(label, Math.min(x+12, W-120), ly);
+    });
+  }
+
+  function addMilestone(pos){
+    var m = {
+      id: "m" + Math.random().toString(36).slice(2) + "_" + state.milestones.length,
+      x: pos.x, y: pos.y, title: "", date: "", description: "", image: null
+    };
+    state.milestones.push(m);
+    draw();
+    openEditor(m, true);
+  }
+
+  canvas.addEventListener("mousedown", function(e){
+    var pos = getPos(e);
+    var hit = hitTest(pos);
+    if(hit){ dragging = true; dragTarget = hit; dragMoved = false; dragStart = pos; }
+    else { drawingLine = true; currentPath = [pos]; }
+    draw();
+  });
+
+  window.addEventListener("mousemove", function(e){
+    if(!dragging && !drawingLine) return;
+    var pos = getPos(e);
+    if(dragging){
+      dragTarget.x = pos.x; dragTarget.y = pos.y;
+      if(Math.hypot(pos.x-dragStart.x, pos.y-dragStart.y) > 0.01) dragMoved = true;
+      draw();
+    } else if(drawingLine){
+      currentPath.push(pos);
+      draw();
+    }
+  });
+
+  window.addEventListener("mouseup", function(){
+    if(dragging){
+      dragging = false;
+      if(!dragMoved){
+        var t = dragTarget; dragTarget = null;
+        openEditor(t, false);
+      } else {
+        dragTarget = null;
+        persist();
+      }
+      draw();
+    } else if(drawingLine){
+      drawingLine = false;
+      if(currentPath.length < 4 || pathSpan(currentPath) < 0.02){
+        addMilestone(currentPath[0]);
+      } else {
+        state.linePath = currentPath.slice();
+        persist();
+      }
+      currentPath = [];
+      draw();
+    }
+  });
+
+  // touch support
+  canvas.addEventListener("touchstart", function(e){ e.preventDefault(); canvas.dispatchEvent(new MouseEvent("mousedown", toMouseInit(e))); }, {passive:false});
+  canvas.addEventListener("touchmove", function(e){ e.preventDefault(); window.dispatchEvent(new MouseEvent("mousemove", toMouseInit(e))); }, {passive:false});
+  canvas.addEventListener("touchend", function(e){ e.preventDefault(); window.dispatchEvent(new MouseEvent("mouseup", {})); }, {passive:false});
+  function toMouseInit(e){
+    var t = e.touches[0] || e.changedTouches[0];
+    return t ? { clientX: t.clientX, clientY: t.clientY } : {};
+  }
+
+  // ---- Milestone editor modal ----
+  var modalOverlay = document.getElementById("modalOverlay");
+  var mTitle = document.getElementById("mTitle");
+  var mDate = document.getElementById("mDate");
+  var mDesc = document.getElementById("mDesc");
+  var mImage = document.getElementById("mImage");
+  var imgPreview = document.getElementById("imgPreview");
+  var btnRemoveImage = document.getElementById("btnRemoveImage");
+
+  var editingMilestone = null, editingIsNew = false, pendingImage = null;
+
+  function openEditor(m, isNew){
+    editingMilestone = m;
+    editingIsNew = !!isNew;
+    pendingImage = m.image || null;
+    mTitle.value = m.title || "";
+    mDate.value = m.date || "";
+    mDesc.value = m.description || "";
+    mImage.value = "";
+    updatePreview();
+    modalOverlay.classList.add("open");
+    setTimeout(function(){ mTitle.focus(); }, 50);
+  }
+
+  function updatePreview(){
+    if(pendingImage){
+      imgPreview.src = pendingImage;
+      imgPreview.style.display = "block";
+      btnRemoveImage.style.display = "inline-block";
+    } else {
+      imgPreview.style.display = "none";
+      btnRemoveImage.style.display = "none";
+    }
+  }
+
+  function closeEditor(){
+    modalOverlay.classList.remove("open");
+    editingMilestone = null;
+    pendingImage = null;
+  }
+
+  mImage.addEventListener("change", function(){
+    var file = mImage.files && mImage.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e){
+      pendingImage = e.target.result;
+      updatePreview();
+    };
+    reader.readAsDataURL(file);
+  });
+
+  btnRemoveImage.addEventListener("click", function(){
+    pendingImage = null;
+    mImage.value = "";
+    updatePreview();
+  });
+
+  document.getElementById("btnSaveMilestone").addEventListener("click", function(){
+    if(!editingMilestone) return;
+    editingMilestone.title = mTitle.value.trim();
+    editingMilestone.date = mDate.value.trim();
+    editingMilestone.description = mDesc.value.trim();
+    editingMilestone.image = pendingImage;
+    closeEditor();
+    draw();
+    renderMilestoneSummary();
+    persist();
+    toast("Milestone saved");
+  });
+
+  document.getElementById("btnCancelMilestone").addEventListener("click", function(){
+    if(editingIsNew && editingMilestone){
+      var idx = state.milestones.indexOf(editingMilestone);
+      if(idx >= 0) state.milestones.splice(idx, 1);
+    }
+    closeEditor();
+    draw();
+    renderMilestoneSummary();
+  });
+
+  document.getElementById("btnDeleteMilestone").addEventListener("click", function(){
+    if(editingMilestone){
+      var idx = state.milestones.indexOf(editingMilestone);
+      if(idx >= 0) state.milestones.splice(idx, 1);
+    }
+    closeEditor();
+    draw();
+    renderMilestoneSummary();
+    persist();
+    toast("Milestone deleted");
+  });
+
+  modalOverlay.addEventListener("click", function(e){
+    if(e.target === modalOverlay){
+      document.getElementById("btnCancelMilestone").click();
+    }
+  });
+
+  function renderMilestoneSummary(){
+    var box = document.getElementById("msSummary");
+    box.innerHTML = "";
+    var pts = state.milestones.slice().sort(function(a,b){return a.x-b.x;});
+    pts.forEach(function(m){
+      var card = document.createElement("div");
+      card.className = "ms-card";
+      var html = "";
+      if(m.image) html += '<img src="'+m.image+'">';
+      html += '<div class="t">'+escapeHtml(m.title || "(untitled)")+'</div>';
+      if(m.date) html += '<div class="d">'+escapeHtml(m.date)+'</div>';
+      card.innerHTML = html;
+      card.addEventListener("click", function(){ openEditor(m, false); });
+      box.appendChild(card);
+    });
+  }
+
+  document.getElementById("btnAddMilestone").addEventListener("click", function(){
+    addMilestone({ x: 0.5, y: 0.5 });
+  });
+
+  document.getElementById("btnClearLine").addEventListener("click", function(){
+    if(confirm("Clear the drawn journey line? Milestones will be kept.")){
+      state.linePath = [];
+      draw();
+      persist();
+    }
+  });
+
+  document.getElementById("btnNew").addEventListener("click", function(){
+    if(confirm("Start a new journey? This clears everything on screen (saved data stays until you Save).")){
+      state = { meta:{title:"",participant:"",date:""}, linePath:[], milestones:[], learnings:[""], triggers:[""], philosophy:[""] };
+      renderAll();
+    }
+  });
+
+  document.getElementById("btnSave").addEventListener("click", function(){
+    syncMetaFromInputs();
+    persist();
+    toast("Saved to this browser");
+  });
+
+  // ---- Meta fields ----
+  var metaTitle = document.getElementById("metaTitle");
+  var metaParticipant = document.getElementById("metaParticipant");
+  var metaDate = document.getElementById("metaDate");
+
+  function syncMetaFromInputs(){
+    state.meta.title = metaTitle.value.trim();
+    state.meta.participant = metaParticipant.value.trim();
+    state.meta.date = metaDate.value.trim();
+  }
+  [metaTitle, metaParticipant, metaDate].forEach(function(el){
+    el.addEventListener("input", function(){ syncMetaFromInputs(); persist(); });
+  });
+
+  // ---- Bullet lists ----
+  var listConfigs = [
+    { key: "learnings", ulId: "listLearnings" },
+    { key: "triggers", ulId: "listTriggers" },
+    { key: "philosophy", ulId: "listPhilosophy" }
+  ];
+
+  function renderList(cfg){
+    var ul = document.getElementById(cfg.ulId);
+    ul.innerHTML = "";
+    state[cfg.key].forEach(function(item, idx){
+      var li = document.createElement("li");
+      var input = document.createElement("input");
+      input.type = "text";
+      input.value = item;
+      input.placeholder = "Type here…";
+      input.addEventListener("input", function(){
+        state[cfg.key][idx] = input.value;
+        persist();
+      });
+      var del = document.createElement("button");
+      del.textContent = "×";
+      del.title = "Remove";
+      del.addEventListener("click", function(){
+        state[cfg.key].splice(idx, 1);
+        if(!state[cfg.key].length) state[cfg.key].push("");
+        renderList(cfg);
+        persist();
+      });
+      li.appendChild(input);
+      li.appendChild(del);
+      ul.appendChild(li);
+    });
+  }
+
+  document.querySelectorAll(".add-btn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var key = btn.getAttribute("data-list");
+      state[key].push("");
+      var cfg = listConfigs.filter(function(c){return c.key===key;})[0];
+      renderList(cfg);
+      persist();
+      var ul = document.getElementById(cfg.ulId);
+      var last = ul.querySelector("li:last-child input");
+      if(last) last.focus();
+    });
+  });
+
+  // ---- Export read-only HTML ----
+  function buildReadonlyHtml(){
+    var snapshot = canvas.toDataURL("image/png");
+    var title = state.meta.title || "Journey Line";
+    var pts = state.milestones.slice().sort(function(a,b){return a.x-b.x;});
+
+    function bulletListHtml(arr){
+      var items = arr.filter(function(s){ return s && s.trim().length; });
+      if(!items.length) return "<p class=\"empty\">(none recorded)</p>";
+      return "<ul>" + items.map(function(s){ return "<li>" + escapeHtml(s) + "</li>"; }).join("") + "</ul>";
+    }
+
+    var milestonesHtml = pts.map(function(m){
+      var img = m.image ? '<img src="'+m.image+'" alt="'+escapeHtml(m.title)+'">' : "";
+      return (
+        '<div class="ms-card">' +
+          img +
+          '<div class="t">' + escapeHtml(m.title || "(untitled)") + '</div>' +
+          (m.date ? '<div class="d">' + escapeHtml(m.date) + '</div>' : "") +
+          (m.description ? '<div class="desc">' + escapeHtml(m.description).replace(/\n/g,"<br>") + '</div>' : "") +
+        '</div>'
+      );
+    }).join("");
+
+    var metaLine = [state.meta.participant, state.meta.date].filter(Boolean).map(escapeHtml).join(" • ");
+
+    var html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+      '<title>' + escapeHtml(title) + ' (Read-only)</title>' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<style>' +
+        'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;' +
+        'background:#f3f0e8;color:#2e2a22;margin:0;padding:24px;}' +
+        '.wrap{max-width:1000px;margin:0 auto;}' +
+        'h1{font-size:28px;margin:0 0 4px 0;}' +
+        '.meta{color:#8a8372;font-size:14px;margin:0 0 18px 0;}' +
+        '.badge{display:inline-block;background:#c0572b;color:#fff;font-size:11px;' +
+        'padding:3px 9px;border-radius:12px;margin-left:8px;vertical-align:middle;}' +
+        'section{background:#fff;border:1px solid #e1dcc9;border-radius:10px;padding:18px;margin-bottom:18px;}' +
+        'img.journey-img{width:100%;border-radius:8px;display:block;}' +
+        '.milestone-grid{display:flex;flex-wrap:wrap;gap:12px;}' +
+        '.ms-card{border:1px solid #e1dcc9;border-radius:8px;padding:10px;width:220px;background:#fffefb;}' +
+        '.ms-card img{width:100%;height:110px;object-fit:cover;border-radius:6px;margin-bottom:8px;}' +
+        '.ms-card .t{font-weight:700;font-size:14px;}' +
+        '.ms-card .d{color:#8a8372;font-size:12px;margin-bottom:6px;}' +
+        '.ms-card .desc{font-size:13px;line-height:1.4;}' +
+        'h2{font-size:17px;margin:0 0 10px 0;}' +
+        'ul{margin:0;padding-left:20px;} li{margin-bottom:6px;font-size:14px;}' +
+        '.empty{color:#8a8372;font-style:italic;font-size:14px;margin:0;}' +
+        'footer{text-align:center;color:#8a8372;font-size:12px;margin-top:10px;}' +
+      '</style></head><body><div class="wrap">' +
+      '<h1>' + escapeHtml(title) + '<span class="badge">Read-only</span></h1>' +
+      (metaLine ? '<p class="meta">' + metaLine + '</p>' : '') +
+      '<section><img class="journey-img" src="' + snapshot + '" alt="Journey line drawing"></section>' +
+      '<section><h2>Milestones</h2><div class="milestone-grid">' + (milestonesHtml || '<p class="empty">(no milestones added)</p>') + '</div></section>' +
+      '<section><h2>Learnings</h2>' + bulletListHtml(state.learnings) + '</section>' +
+      '<section><h2>Triggers</h2>' + bulletListHtml(state.triggers) + '</section>' +
+      '<section><h2>Leadership Philosophy</h2>' + bulletListHtml(state.philosophy) + '</section>' +
+      '<footer>Exported from Journey Lines — read-only snapshot.</footer>' +
+      '</div></body></html>';
+
+    return html;
+  }
+
+  document.getElementById("btnExport").addEventListener("click", function(){
+    syncMetaFromInputs();
+    var html = buildReadonlyHtml();
+    var blob = new Blob([html], { type: "text/html" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    var name = (state.meta.title || "journey-line").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g,"");
+    a.href = url;
+    a.download = (name || "journey-line") + "-readonly.html";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+    persist();
+    toast("Read-only HTML exported");
+  });
+
+  // ---- Init ----
+  function renderAll(){
+    metaTitle.value = state.meta.title || "";
+    metaParticipant.value = state.meta.participant || "";
+    metaDate.value = state.meta.date || "";
+    listConfigs.forEach(renderList);
+    renderMilestoneSummary();
+    draw();
+  }
+
+  load();
+  renderAll();
+})();
+</script>
+</body>
+</html>
