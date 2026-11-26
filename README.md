@@ -2,7 +2,7 @@
 
 A single-file web app for running the "Journey Line" team-building and retrospective exercise: each person sketches their emotional ups and downs over time, pins milestones along the way, and captures what they learned, what triggered them, and how their leadership philosophy evolved.
 
-Everything runs entirely in the browser. There's no build step, no server, and no data leaves the page — your work only exists on your machine unless you choose to save or export it.
+Everything runs entirely in the browser. There's no build step, no server, and no data leaves the page. Your data only exist on your machine unless you choose to save or export it.
 
 ![Journey Lines editor](docs/screenshot.png)
 
@@ -29,6 +29,6 @@ No installation, accounts, or internet connection required.
 
 ## License
 
-Licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) — see [LICENSE](LICENSE). You're free to share and adapt this for non-commercial use, with attribution.
+Licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). See [LICENSE](LICENSE). You're free to share and adapt this for non-commercial use, with attribution.
 
 Made by Marcello Majonchi.
